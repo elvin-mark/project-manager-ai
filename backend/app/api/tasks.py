@@ -54,8 +54,8 @@ async def generate_tasks(
 
         # 4. Parse the LLM response and return the tasks
         tasks_json = json.loads(response["message"]["content"])
-        print(tasks_json)
-        return [Task(**task) for task in tasks_json["tasks"]]
+        tasks = [tasks_json] if "tasks" not in tasks_json else tasks_json["tasks"]
+        return [Task(**task) for task in tasks]
 
     except ollama.ResponseError as e:
         raise HTTPException(status_code=500, detail=f"Ollama API error: {e.error}")
