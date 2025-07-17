@@ -1,26 +1,102 @@
 <template>
   <div class="bg-white p-5 rounded-xl shadow-lg border border-slate-200 hover:shadow-xl transition-shadow duration-300">
-    <div class="flex justify-between items-start">
-      <h3 class="text-lg font-semibold text-slate-800 mb-2">{{ task.title }}</h3>
-      <span 
-        class="text-xs font-semibold uppercase px-3 py-1 rounded-full"
-        :class="statusClass"
-      >
-        {{ task.status }}
-      </span>
+    <div v-if="!isEditing">
+      <div class="flex justify-between items-start">
+        <h3 class="text-lg font-semibold text-slate-800 mb-2">{{ task.title }}</h3>
+        <span 
+          class="text-xs font-semibold uppercase px-3 py-1 rounded-full"
+          :class="statusClass"
+        >
+          {{ task.status }}
+        </span>
+      </div>
+      <p class="text-slate-600">{{ task.description }}</p>
+      <div class="mt-4 flex justify-end space-x-2">
+        <button @click="startEditing" class="text-blue-500 hover:text-blue-700 text-sm">Edit</button>
+        <button @click="confirmDelete" class="text-red-500 hover:text-red-700 text-sm">Delete</button>
+      </div>
     </div>
-    <p class="text-slate-600">{{ task.description }}</p>
+    <div v-else>
+      <div class="mb-3">
+        <label for="edit-title" class="block text-sm font-medium text-slate-700">Title</label>
+        <input 
+          id="edit-title"
+          v-model="editedTitle"
+          type="text"
+          class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+        />
+      </div>
+      <div class="mb-3">
+        <label for="edit-description" class="block text-sm font-medium text-slate-700">Description</label>
+        <textarea 
+          id="edit-description"
+          v-model="editedDescription"
+          rows="3"
+          class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+        ></textarea>
+      </div>
+      <div class="mb-4">
+        <label for="edit-status" class="block text-sm font-medium text-slate-700">Status</label>
+        <select 
+          id="edit-status"
+          v-model="editedStatus"
+          class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+        >
+          <option value="todo">To Do</option>
+          <option value="in_progress">In Progress</option>
+          <option value="done">Done</option>
+        </select>
+      </div>
+      <div class="flex justify-end space-x-2">
+        <button @click="cancelEditing" class="px-3 py-1 border border-slate-300 rounded-md text-slate-700 hover:bg-slate-100 text-sm">Cancel</button>
+        <button @click="saveChanges" class="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm">Save</button>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { ref, computed } from 'vue';
 import type { Task } from '../models/Task';
 
 const props = defineProps<{ task: Task }>();
+const emit = defineEmits(['update-task', 'delete-task']);
+
+const isEditing = ref(false);
+const editedTitle = ref(props.task.title);
+const editedDescription = ref(props.task.description);
+const editedStatus = ref(props.task.status);
+
+const startEditing = () => {
+  isEditing.value = true;
+  editedTitle.value = props.task.title;
+  editedDescription.value = props.task.description;
+  editedStatus.value = props.task.status;
+};
+
+const cancelEditing = () => {
+  isEditing.value = false;
+};
+
+const saveChanges = () => {
+  emit('update-task', {
+    id: props.task.id,
+    title: editedTitle.value,
+    description: editedDescription.value,
+    status: editedStatus.value,
+  });
+  isEditing.value = false;
+};
+
+const confirmDelete = () => {
+  if (confirm('Are you sure you want to delete this task?')) {
+    emit('delete-task', props.task.id);
+  }
+};
 
 const statusClass = computed(() => {
-  switch (props.task.status.toLowerCase()) {
+  const status = isEditing.value ? editedStatus.value : props.task.status;
+  switch (status.toLowerCase()) {
     case 'todo':
       return 'bg-blue-100 text-blue-800';
     case 'in_progress':

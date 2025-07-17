@@ -12,7 +12,12 @@
       <p>{{ error }}</p>
     </div>
 
-    <TaskList :tasks="tasks" class="mt-6" />
+    <TaskList 
+      :tasks="tasks" 
+      class="mt-6" 
+      @update-task="handleUpdateTask" 
+      @delete-task="handleDeleteTask" 
+    />
   </div>
 </template>
 
@@ -21,7 +26,7 @@ import { ref, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import TaskInput from '../components/TaskInput.vue';
 import TaskList from '../components/TaskList.vue';
-import { generateTasks, getTasks, getProjectById } from '../services/api';
+import { generateTasks, getTasks, getProjectById, updateTask, deleteTask } from '../services/api';
 import type { Task } from '../models/Task';
 
 const props = defineProps<{ projectId: string }>();
@@ -61,6 +66,27 @@ const handleGenerateTasks = async (objective: string) => {
     error.value = err.message;
   } finally {
     loading.value = false;
+  }
+};
+
+const handleUpdateTask = async (updatedTask: Partial<Task> & { id: string }) => {
+  try {
+    const responseTask = await updateTask(currentProjectId.value, updatedTask.id, updatedTask);
+    const index = tasks.value.findIndex(t => t.id === responseTask.id);
+    if (index !== -1) {
+      tasks.value[index] = responseTask;
+    }
+  } catch (err: any) {
+    alert(`Failed to update task: ${err.message}`);
+  }
+};
+
+const handleDeleteTask = async (taskId: string) => {
+  try {
+    await deleteTask(currentProjectId.value, taskId);
+    tasks.value = tasks.value.filter(t => t.id !== taskId);
+  } catch (err: any) {
+    alert(`Failed to delete task: ${err.message}`);
   }
 };
 
