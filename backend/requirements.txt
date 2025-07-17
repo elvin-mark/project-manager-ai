@@ -8,3 +8,5 @@ ollama
 google-generativeai
 sqlalchemy
 aiosqlite
+passlib[bcrypt]
+python-jose[cryptography]

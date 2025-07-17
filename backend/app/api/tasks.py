@@ -10,6 +10,8 @@ from app.models.project import Project as DBProject
 from app.services.rag_service import RAGService
 from app.core.config import settings
 from app.core.db import get_db
+from app.core.security import get_current_user
+from app.models.user import User
 
 router = APIRouter()
 
@@ -114,10 +116,16 @@ def update_task(
     task_id: str,
     task_update: TaskCreate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     db_task = (
         db.query(DBTask)
-        .filter(DBTask.project_id == project_id, DBTask.id == task_id)
+        .join(DBProject)
+        .filter(
+            DBTask.project_id == project_id,
+            DBTask.id == task_id,
+            DBProject.user_id == current_user.id,
+        )
         .first()
     )
     if db_task is None:
@@ -135,10 +143,20 @@ def update_task(
 @router.delete(
     "/projects/{project_id}/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT
 )
-def delete_task(project_id: str, task_id: str, db: Session = Depends(get_db)):
+def delete_task(
+    project_id: str,
+    task_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     db_task = (
         db.query(DBTask)
-        .filter(DBTask.project_id == project_id, DBTask.id == task_id)
+        .join(DBProject)
+        .filter(
+            DBTask.project_id == project_id,
+            DBTask.id == task_id,
+            DBProject.user_id == current_user.id,
+        )
         .first()
     )
     if db_task is None:
