@@ -6,3 +6,5 @@ chromadb
 langchain
 ollama
 google-generativeai
+sqlalchemy
+aiosqlite
