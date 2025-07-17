@@ -38,6 +38,31 @@ The goal is not to replace developers, but to augment them, freeing them from th
 4.  **Task Dispatcher:** The generated tasks are stored and assigned to developers.
 5.  **Web Interface:** A clean, simple UI where developers can view and manage their assigned tasks.
 
+## Project Structure
+
+This project consists of a backend API and a frontend web application.
+
+### Backend
+
+The backend is built with Python and FastAPI. It handles data ingestion, AI processing, and task management.
+
+-   `backend/app/main.py`: The main FastAPI application entry point.
+-   `backend/app/api/`: Contains API endpoints for tasks.
+-   `backend/app/core/`: Configuration settings for the application.
+-   `backend/app/models/`: Data models (e.g., `Task`).
+-   `backend/app/services/`: Business logic and AI services (e.g., RAG service).
+
+### Frontend
+
+The frontend is a web application built with Vue.js and TypeScript, providing the user interface for interacting with the project manager.
+
+-   `frontend/src/App.vue`: The main Vue.js application component.
+-   `frontend/src/main.ts`: Frontend application entry point.
+-   `frontend/src/components/`: Reusable Vue.js components (e.g., `Header`, `TaskList`).
+-   `frontend/src/models/`: TypeScript interfaces for frontend data models (e.g., `Task.ts`).
+-   `frontend/src/router/`: Vue Router configuration for navigation.
+-   `frontend/src/services/`: Frontend services for API communication.
+
 ## Getting Started
 
 _(This section will be filled out as the project develops)_
