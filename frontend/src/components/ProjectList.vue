@@ -1,6 +1,6 @@
 <template>
   <div class="bg-white p-6 rounded-xl shadow-lg mb-6">
-    <h2 class="text-2xl font-semibold text-slate-800 mb-4">Your Projects</h2>
+    <h2 class="text-2xl font-semibold text-slate-800 mb-4">Projects for Organization: {{ organizationName }}</h2>
     
     <form @submit.prevent="handleCreateProject" class="mb-6">
       <div class="flex flex-col sm:flex-row gap-4">
@@ -42,7 +42,7 @@
       <div 
         v-for="project in projects" 
         :key="project.id" 
-        @click="goToProject(project.id)"
+        @click="goToProjectTasks(project.id)"
         class="bg-slate-50 p-5 rounded-xl shadow-md border border-slate-200 cursor-pointer hover:shadow-lg hover:border-blue-300 transition-all duration-200"
       >
         <h3 class="text-xl font-semibold text-slate-700 mb-2">{{ project.name }}</h3>
@@ -62,10 +62,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { createProject, getProjects, deleteProject as apiDeleteProject } from '../services/api';
+import { createProject, getProjects, deleteProject as apiDeleteProject, getOrganizationById } from '../services/api';
 import type { Project } from '../models/Project';
+
+const props = defineProps<{ orgId: string }>();
 
 const projects = ref<Project[]>([]);
 const loading = ref(true);
@@ -74,6 +76,7 @@ const newProjectName = ref('');
 const newProjectDescription = ref('');
 const creatingProject = ref(false);
 const createError = ref<string | null>(null);
+const organizationName = ref('Loading...');
 
 const router = useRouter();
 
@@ -81,7 +84,9 @@ const fetchProjects = async () => {
   loading.value = true;
   error.value = null;
   try {
-    projects.value = await getProjects();
+    const org = await getOrganizationById(props.orgId);
+    organizationName.value = org.name;
+    projects.value = await getProjects(props.orgId);
   } catch (err: any) {
     error.value = err.message;
   } finally {
@@ -97,7 +102,7 @@ const handleCreateProject = async () => {
   creatingProject.value = true;
   createError.value = null;
   try {
-    const newProject = await createProject(newProjectName.value, newProjectDescription.value);
+    const newProject = await createProject(props.orgId, newProjectName.value, newProjectDescription.value);
     projects.value.push(newProject);
     newProjectName.value = '';
     newProjectDescription.value = '';
@@ -119,9 +124,13 @@ const deleteProject = async (projectId: string) => {
   }
 };
 
-const goToProject = (projectId: string) => {
-  router.push({ name: 'tasks', params: { projectId: projectId } });
+const goToProjectTasks = (projectId: string) => {
+  router.push({ name: 'tasks', params: { orgId: props.orgId, projectId: projectId } });
 };
 
 onMounted(fetchProjects);
+
+watch(() => props.orgId, () => {
+  fetchProjects();
+});
 </script>

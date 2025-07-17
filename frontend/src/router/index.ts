@@ -1,22 +1,38 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import OrganizationList from '@/components/OrganizationList.vue'
 import ProjectList from '@/components/ProjectList.vue'
 import TaskView from '@/components/TaskView.vue'
 import Login from '@/components/Login.vue'
 import Register from '@/components/Register.vue'
+import OrganizationMembers from '@/components/OrganizationMembers.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/',
-      name: 'projects',
-      component: ProjectList,
+      name: 'organizations',
+      component: OrganizationList,
       meta: { requiresAuth: true },
     },
     {
-      path: '/projects/:projectId',
+      path: '/organizations/:orgId/projects',
+      name: 'organization-projects',
+      component: ProjectList,
+      props: true,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/organizations/:orgId/projects/:projectId',
       name: 'tasks',
       component: TaskView,
+      props: true,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/organizations/:orgId/members',
+      name: 'organization-members',
+      component: OrganizationMembers,
       props: true,
       meta: { requiresAuth: true },
     },

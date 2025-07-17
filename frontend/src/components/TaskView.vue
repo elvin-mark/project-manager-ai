@@ -17,6 +17,7 @@
       class="mt-6" 
       @update-task="handleUpdateTask" 
       @delete-task="handleDeleteTask" 
+      @assign-task="handleAssignTask"
     />
   </div>
 </template>
@@ -26,10 +27,10 @@ import { ref, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import TaskInput from '../components/TaskInput.vue';
 import TaskList from '../components/TaskList.vue';
-import { generateTasks, getTasks, getProjectById, updateTask, deleteTask } from '../services/api';
+import { generateTasks, getTasks, getProjectById, updateTask, deleteTask, assignTask } from '../services/api';
 import type { Task } from '../models/Task';
 
-const props = defineProps<{ projectId: string }>();
+const props = defineProps<{ orgId: string, projectId: string }>();
 
 const tasks = ref<Task[]>([]);
 const loading = ref(false);
@@ -37,6 +38,7 @@ const error = ref<string | null>(null);
 const projectName = ref('Loading...');
 
 const route = useRoute();
+const currentOrgId = ref(props.orgId);
 const currentProjectId = ref(props.projectId);
 
 const fetchProjectAndTasks = async () => {
@@ -90,10 +92,29 @@ const handleDeleteTask = async (taskId: string) => {
   }
 };
 
+const handleAssignTask = async (taskId: string) => {
+  try {
+    const responseTask = await assignTask(currentProjectId.value, taskId); // No userId needed here
+    const index = tasks.value.findIndex(t => t.id === responseTask.id);
+    if (index !== -1) {
+      tasks.value[index] = responseTask;
+    }
+  } catch (err: any) {
+    console.error("Error assigning task:", err);
+    alert(`Failed to assign task: ${err.message}`);
+  }
+};
+
 onMounted(fetchProjectAndTasks);
 
 watch(() => props.projectId, (newProjectId) => {
   currentProjectId.value = newProjectId;
+  fetchProjectAndTasks();
+});
+
+watch(() => props.orgId, (newOrgId) => {
+  currentOrgId.value = newOrgId;
+  // Re-fetch projects and tasks when organization changes
   fetchProjectAndTasks();
 });
 </script>

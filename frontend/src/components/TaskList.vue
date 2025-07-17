@@ -7,6 +7,7 @@
         :task="task" 
         @update-task="(updatedTask) => $emit('update-task', updatedTask)"
         @delete-task="(taskId) => $emit('delete-task', taskId)"
+        @assign-task="(taskId) => $emit('assign-task', taskId)"
       />
     </div>
     <div v-else class="text-center py-10 px-4 bg-white rounded-xl shadow-md">
@@ -21,5 +22,5 @@ import type { Task } from '../models/Task';
 import TaskItem from './TaskItem.vue';
 
 defineProps<{ tasks: Task[] }>();
-const emit = defineEmits(['update-task', 'delete-task']);
+const emit = defineEmits(['update-task', 'delete-task', 'assign-task']);
 </script>

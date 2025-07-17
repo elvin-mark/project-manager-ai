@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import tasks, projects
 from app.core.db import Base, engine
 from app.api import auth
+from app.api import organizations
+from app.api import users
 
 app = FastAPI(
     title="Adept AI Project Manager",
@@ -28,6 +30,8 @@ def on_startup():
 app.include_router(tasks.router, prefix="/api", tags=["Tasks"])
 app.include_router(projects.router, prefix="/api", tags=["Projects"])
 app.include_router(auth.router, prefix="/api", tags=["Auth"])
+app.include_router(organizations.router, prefix="/api", tags=["Organizations"])
+app.include_router(users.router, prefix="/api", tags=["Users"])
 
 
 @app.get("/", tags=["Root"])

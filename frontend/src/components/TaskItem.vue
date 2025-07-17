@@ -2,7 +2,11 @@
   <div class="bg-white p-5 rounded-xl shadow-lg border border-slate-200 hover:shadow-xl transition-shadow duration-300">
     <div v-if="!isEditing">
       <div class="flex justify-between items-start">
-        <h3 class="text-lg font-semibold text-slate-800 mb-2">{{ task.title }}</h3>
+        <div>
+          <h3 class="text-lg font-semibold text-slate-800 mb-1">{{ task.title }}</h3>
+          <p v-if="task.assigned_username" class="text-sm text-slate-500">Assigned to: {{ task.assigned_username }}</p>
+          <p v-else class="text-sm text-slate-500">Unassigned</p>
+        </div>
         <span 
           class="text-xs font-semibold uppercase px-3 py-1 rounded-full"
           :class="statusClass"
@@ -12,6 +16,7 @@
       </div>
       <p class="text-slate-600">{{ task.description }}</p>
       <div class="mt-4 flex justify-end space-x-2">
+        <button @click="assignToMe" class="text-green-500 hover:text-green-700 text-sm">Assign to Me</button>
         <button @click="startEditing" class="text-blue-500 hover:text-blue-700 text-sm">Edit</button>
         <button @click="confirmDelete" class="text-red-500 hover:text-red-700 text-sm">Delete</button>
       </div>
@@ -60,7 +65,7 @@ import { ref, computed } from 'vue';
 import type { Task } from '../models/Task';
 
 const props = defineProps<{ task: Task }>();
-const emit = defineEmits(['update-task', 'delete-task']);
+const emit = defineEmits(['update-task', 'delete-task', 'assign-task']);
 
 const isEditing = ref(false);
 const editedTitle = ref(props.task.title);
@@ -84,8 +89,13 @@ const saveChanges = () => {
     title: editedTitle.value,
     description: editedDescription.value,
     status: editedStatus.value,
+    assigned_user_id: props.task.assigned_user_id, // Keep existing assignment unless explicitly changed
   });
   isEditing.value = false;
+};
+
+const assignToMe = () => { 
+  emit('assign-task', props.task.id);
 };
 
 const confirmDelete = () => {

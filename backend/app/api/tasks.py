@@ -11,7 +11,9 @@ from app.services.rag_service import RAGService
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import get_current_user
-from app.models.user import User
+from app.models.user import (
+    User as DBUser,
+)  # Alias to avoid conflict with Pydantic User model
 
 router = APIRouter()
 
@@ -28,10 +30,16 @@ async def generate_tasks(
     objective: str,
     rag_service: RAGService = Depends(get_rag_service),
     db: Session = Depends(get_db),
+    current_user: DBUser = Depends(get_current_user),
 ):
     project = db.query(DBProject).filter(DBProject.id == project_id).first()
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
+
+    if current_user not in project.organization.members:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to generate tasks for this project"
+        )
 
     # 1. Query the RAG service to get relevant context
     context = rag_service.query(objective)
@@ -70,13 +78,17 @@ async def generate_tasks(
 
         created_tasks = []
         for task_data in tasks_data:
-            db_task = DBTask(**task_data, project_id=project_id)
+            db_task = DBTask(
+                **task_data, project_id=project_id, assigned_user_id=current_user.id
+            )
             db_task.id = str(uuid.uuid4())
             db.add(db_task)
             created_tasks.append(db_task)
         db.commit()
         for task in created_tasks:  # Refresh each task to get its ID
             db.refresh(task)
+            if task.assigned_to:
+                task.assigned_username = task.assigned_to.username
 
         return [TaskResponse.model_validate(task) for task in created_tasks]
 
@@ -93,13 +105,34 @@ async def generate_tasks(
 
 
 @router.get("/projects/{project_id}/tasks", response_model=List[TaskResponse])
-def get_all_tasks(project_id: str, db: Session = Depends(get_db)):
+def get_all_tasks(
+    project_id: str,
+    db: Session = Depends(get_db),
+    current_user: DBUser = Depends(get_current_user),
+):
+    project = db.query(DBProject).filter(DBProject.id == project_id).first()
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    if current_user not in project.organization.members:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to view tasks for this project"
+        )
+
     tasks = db.query(DBTask).filter(DBTask.project_id == project_id).all()
+    for task in tasks:
+        if task.assigned_to:
+            task.assigned_username = task.assigned_to.username
     return [TaskResponse.model_validate(task) for task in tasks]
 
 
 @router.get("/projects/{project_id}/tasks/{task_id}", response_model=TaskResponse)
-def get_task(project_id: str, task_id: str, db: Session = Depends(get_db)):
+def get_task(
+    project_id: str,
+    task_id: str,
+    db: Session = Depends(get_db),
+    current_user: DBUser = Depends(get_current_user),
+):
     task = (
         db.query(DBTask)
         .filter(DBTask.project_id == project_id, DBTask.id == task_id)
@@ -107,7 +140,45 @@ def get_task(project_id: str, task_id: str, db: Session = Depends(get_db)):
     )
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found in this project")
+
+    if current_user not in task.project.organization.members:
+        raise HTTPException(status_code=403, detail="Not authorized to view this task")
+
+    if task.assigned_to:
+        task.assigned_username = task.assigned_to.username
     return TaskResponse.model_validate(task)
+
+
+@router.post(
+    "/projects/{project_id}/tasks/{task_id}/assign", response_model=TaskResponse
+)
+def assign_task(
+    project_id: str,
+    task_id: str,
+    db: Session = Depends(get_db),
+    current_user: DBUser = Depends(get_current_user),
+):
+    db_task = (
+        db.query(DBTask)
+        .filter(DBTask.project_id == project_id, DBTask.id == task_id)
+        .first()
+    )
+    if db_task is None:
+        raise HTTPException(status_code=404, detail="Task not found in this project")
+
+    if current_user not in db_task.project.organization.members:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to assign tasks in this project"
+        )
+
+    # Assign task to the current user
+    db_task.assigned_user_id = current_user.id
+    db.add(db_task)
+    db.commit()
+    db.refresh(db_task)
+    if db_task.assigned_to:
+        db_task.assigned_username = db_task.assigned_to.username
+    return TaskResponse.model_validate(db_task)
 
 
 @router.put("/projects/{project_id}/tasks/{task_id}", response_model=TaskResponse)
@@ -116,27 +187,71 @@ def update_task(
     task_id: str,
     task_update: TaskCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: DBUser = Depends(get_current_user),
 ):
     db_task = (
         db.query(DBTask)
-        .join(DBProject)
-        .filter(
-            DBTask.project_id == project_id,
-            DBTask.id == task_id,
-            DBProject.user_id == current_user.id,
-        )
+        .filter(DBTask.project_id == project_id, DBTask.id == task_id)
         .first()
     )
     if db_task is None:
         raise HTTPException(status_code=404, detail="Task not found in this project")
 
-    for key, value in task_update.model_dump().items():
-        setattr(db_task, key, value)
+    if current_user not in db_task.project.organization.members:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to update this task"
+        )
+
+    # Logic for reassigning task to self
+    if (
+        task_update.assigned_user_id == current_user.id
+        and db_task.assigned_user_id != current_user.id
+    ):
+        # Ensure the current user is part of the organization
+        if current_user not in db_task.project.organization.members:
+            raise HTTPException(
+                status_code=403,
+                detail="Cannot assign task: User is not a member of this organization.",
+            )
+        db_task.assigned_user_id = current_user.id
+    elif (
+        task_update.assigned_user_id is not None
+        and task_update.assigned_user_id != current_user.id
+    ):
+        # Allow unassigning or assigning to another user if current user has broader permissions (e.g., admin)
+        # For now, only allow assigning to self or unassigning by anyone in the org
+        # A more robust permission system would be needed here.
+        if current_user not in db_task.project.organization.members:  # Basic check
+            raise HTTPException(
+                status_code=403, detail="Not authorized to assign task to other users."
+            )
+
+        # Verify the assigned user is also in the same organization
+        assigned_user = (
+            db.query(DBUser).filter(DBUser.id == task_update.assigned_user_id).first()
+        )
+        if (
+            not assigned_user
+            or assigned_user not in db_task.project.organization.members
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Assigned user is not a member of this organization.",
+            )
+
+        db_task.assigned_user_id = task_update.assigned_user_id
+    elif task_update.assigned_user_id is None:
+        db_task.assigned_user_id = None
+
+    for key, value in task_update.model_dump(exclude_unset=True).items():
+        if key != "assigned_user_id":  # assigned_user_id is handled above
+            setattr(db_task, key, value)
 
     db.add(db_task)
     db.commit()
     db.refresh(db_task)
+    if db_task.assigned_to:
+        db_task.assigned_username = db_task.assigned_to.username
     return TaskResponse.model_validate(db_task)
 
 
@@ -147,20 +262,20 @@ def delete_task(
     project_id: str,
     task_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: DBUser = Depends(get_current_user),
 ):
     db_task = (
         db.query(DBTask)
-        .join(DBProject)
-        .filter(
-            DBTask.project_id == project_id,
-            DBTask.id == task_id,
-            DBProject.user_id == current_user.id,
-        )
+        .filter(DBTask.project_id == project_id, DBTask.id == task_id)
         .first()
     )
     if db_task is None:
         raise HTTPException(status_code=404, detail="Task not found in this project")
+
+    if current_user not in db_task.project.organization.members:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to delete this task"
+        )
 
     db.delete(db_task)
     db.commit()
