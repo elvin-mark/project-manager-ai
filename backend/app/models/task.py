@@ -21,6 +21,7 @@ class Task(Base):
     project = relationship("Project", back_populates="tasks")
     assigned_to = relationship("User", back_populates="assigned_tasks")
     comments = relationship("Comment", back_populates="task", cascade="all, delete-orphan")
+    subtasks = relationship("Subtask", back_populates="task", cascade="all, delete-orphan")
 
 
 # Pydantic model for request/response validation

@@ -5,8 +5,10 @@ from typing import List
 from app.models.project import Project as DBProject, ProjectCreate, ProjectResponse
 from app.models.user import User as DBUser
 from app.models.organization import Organization as DBOrganization
+from app.models.task import Task as DBTask
 from app.core.db import get_db
 from app.core.security import get_current_user
+from pydantic import BaseModel
 
 router = APIRouter()
 
@@ -67,6 +69,39 @@ def get_project(
         raise HTTPException(status_code=403, detail="Not authorized to view this project")
 
     return project
+
+
+class ProjectSummaryResponse(BaseModel):
+    total_tasks: int
+    todo_tasks: int
+    in_progress_tasks: int
+    done_tasks: int
+
+
+@router.get("/projects/{project_id}/summary", response_model=ProjectSummaryResponse)
+def get_project_summary(
+    project_id: str,
+    db: Session = Depends(get_db),
+    current_user: DBUser = Depends(get_current_user),
+):
+    project = db.query(DBProject).filter(DBProject.id == project_id).first()
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    if current_user not in project.organization.members:
+        raise HTTPException(status_code=403, detail="Not authorized to view this project summary")
+
+    total_tasks = db.query(DBTask).filter(DBTask.project_id == project_id).count()
+    todo_tasks = db.query(DBTask).filter(DBTask.project_id == project_id, DBTask.status == "todo").count()
+    in_progress_tasks = db.query(DBTask).filter(DBTask.project_id == project_id, DBTask.status == "in_progress").count()
+    done_tasks = db.query(DBTask).filter(DBTask.project_id == project_id, DBTask.status == "done").count()
+
+    return ProjectSummaryResponse(
+        total_tasks=total_tasks,
+        todo_tasks=todo_tasks,
+        in_progress_tasks=in_progress_tasks,
+        done_tasks=done_tasks,
+    )
 
 
 @router.delete("/projects/{project_id}", status_code=status.HTTP_204_NO_CONTENT)

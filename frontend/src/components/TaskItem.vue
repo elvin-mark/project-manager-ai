@@ -20,7 +20,7 @@
         <button @click.stop="assignToMe" class="text-green-500 hover:text-green-700 text-sm">Assign to Me</button>
         <button @click.stop="startEditing" class="text-blue-500 hover:text-blue-700 text-sm">Edit</button>
         <button @click.stop="confirmDelete" class="text-red-500 hover:text-red-700 text-sm">Delete</button>
-        <button @click.stop="viewTask" class="text-purple-500 hover:text-purple-700 text-sm">Comments</button>
+        <button @click.stop="viewTask" class="text-purple-500 hover:text-purple-700 text-sm">Details</button>
       </div>
     </div>
     <div v-else>

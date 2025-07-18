@@ -30,6 +30,13 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/organizations/:orgId/projects/:projectId/tasks/:taskId',
+      name: 'task-details',
+      component: () => import('@/views/TaskDetailView.vue'),
+      props: true,
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/organizations/:orgId/members',
       name: 'organization-members',
       component: OrganizationMembers,

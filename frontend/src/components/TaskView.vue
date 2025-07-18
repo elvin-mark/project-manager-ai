@@ -42,41 +42,23 @@
       />
     </template>
 
-    <!-- Comment Modal -->
-    <div v-if="showCommentModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-center">
-      <div class="bg-white p-8 rounded-lg shadow-xl max-w-md w-full mx-4">
-        <h3 class="text-xl font-semibold text-slate-800 mb-4">Comments for {{ selectedTask?.title }}</h3>
-        <div class="max-h-80 overflow-y-auto mb-4 border p-3 rounded-md bg-gray-50">
-          <div v-if="comments.length === 0" class="text-slate-500 text-center">No comments yet.</div>
-          <div v-for="comment in comments" :key="comment.id" class="mb-3 pb-3 border-b last:border-b-0 last:pb-0">
-            <p class="text-slate-700 text-sm">{{ comment.content }}</p>
-            <p class="text-xs text-slate-500 text-right">- {{ comment.username }} on {{ formatDate(comment.created_at) }}</p>
-          </div>
-        </div>
-        <textarea
-          v-model="newCommentContent"
-          placeholder="Add a new comment..."
-          rows="3"
-          class="w-full p-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
-        ></textarea>
-        <div class="flex justify-end space-x-2">
-          <button @click="showCommentModal = false" class="px-4 py-2 border border-slate-300 rounded-md text-slate-700 hover:bg-slate-100">Close</button>
-          <button @click="handleAddComment" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Add Comment</button>
-        </div>
-      </div>
-    </div>
+    <ProjectDashboard :project-id="currentProjectId" />
+
+    
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, watch, onBeforeUnmount } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import TaskInput from '../components/TaskInput.vue';
 import KanbanBoard from '../components/KanbanBoard.vue';
 import TaskList from '../components/TaskList.vue';
-import { generateTasks, getTasks, getProjectById, updateTask, deleteTask, assignTask, getComments, createComment } from '../services/api';
+import { generateTasks, getTasks, getProjectById, updateTask, deleteTask, assignTask, getComments, createComment, generateSubtasks, getSubtasks, updateSubtask } from '../services/api';
 import type { Task } from '../models/Task';
 import type { Comment } from '../models/Comment';
+import type { Subtask } from '../models/Subtask';
+import ProjectDashboard from '../components/ProjectDashboard.vue';
 
 const props = defineProps<{ orgId: string, projectId: string }>();
 
@@ -89,10 +71,11 @@ const isMobileView = ref(false);
 const selectedTask = ref<Task | null>(null);
 const comments = ref<Comment[]>([]);
 const newCommentContent = ref('');
-const showCommentModal = ref(false);
 const searchQuery = ref('');
+const subtaskObjective = ref('');
 
 const route = useRoute();
+const router = useRouter();
 const currentOrgId = ref(props.orgId);
 const currentProjectId = ref(props.projectId);
 
@@ -165,14 +148,7 @@ const handleAssignTask = async (taskId: string) => {
 };
 
 const handleViewTask = async (task: Task) => {
-  selectedTask.value = task;
-  showCommentModal.value = true;
-  try {
-    comments.value = (await getComments(currentProjectId.value, task.id)) as Comment[];
-  } catch (err: any) {
-    console.error("Error fetching comments:", err);
-    alert(`Failed to fetch comments: ${err.message}`);
-  }
+  router.push({ name: 'task-details', params: { orgId: currentOrgId.value, projectId: currentProjectId.value, taskId: task.id } });
 };
 
 const handleAddComment = async () => {
@@ -184,6 +160,38 @@ const handleAddComment = async () => {
   } catch (err: any) {
     console.error("Error adding comment:", err);
     alert(`Failed to add comment: ${err.message}`);
+  }
+};
+
+const handleGenerateSubtasks = async () => {
+  if (!selectedTask.value || !subtaskObjective.value.trim()) return;
+  try {
+    const newSubtasks = await generateSubtasks(currentProjectId.value, selectedTask.value.id, subtaskObjective.value);
+    if (selectedTask.value.subtasks) {
+      selectedTask.value.subtasks.push(...newSubtasks);
+    } else {
+      selectedTask.value.subtasks = newSubtasks;
+    }
+    subtaskObjective.value = '';
+  } catch (err: any) {
+    console.error("Error generating subtasks:", err);
+    alert(`Failed to generate subtasks: ${err.message}`);
+  }
+};
+
+const handleUpdateSubtask = async (subtask: Subtask) => {
+  if (!selectedTask.value) return;
+  try {
+    const updated = await updateSubtask(currentProjectId.value, selectedTask.value.id, subtask.id, subtask);
+    if (selectedTask.value.subtasks) {
+      const index = selectedTask.value.subtasks.findIndex(s => s.id === updated.id);
+      if (index !== -1) {
+        selectedTask.value.subtasks[index] = updated;
+      }
+    }
+  } catch (err: any) {
+    console.error("Error updating subtask:", err);
+    alert(`Failed to update subtask: ${err.message}`);
   }
 };
 

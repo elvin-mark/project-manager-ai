@@ -1,3 +1,5 @@
+import type { Subtask } from './Subtask';
+
 export interface Task {
   id: string;
   title: string;
@@ -7,4 +9,5 @@ export interface Task {
   assigned_user_id?: string;
   assigned_username?: string;
   due_date?: string;
+  subtasks?: Subtask[];
 }

@@ -1,6 +1,7 @@
 import type { Task } from '../models/Task'
-import type { Project } from '../models/Project'
+import type { Project, ProjectSummary } from '../models/Project'
 import type { Comment } from '../models/Comment'
+import type { Subtask } from '../models/Subtask'
 import type { Organization } from '../models/Organization'
 
 const API_URL = import.meta.env.VITE_API_URL
@@ -199,6 +200,17 @@ export async function deleteProject(projectId: string): Promise<void> {
   }
 }
 
+export async function getProjectSummary(projectId: string): Promise<ProjectSummary> {
+  const response = await fetch(`${API_URL}/projects/${projectId}/summary`, {
+    headers: getAuthHeaders(),
+  })
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.detail || 'Failed to fetch project summary')
+  }
+  return response.json()
+}
+
 // Task API calls
 export async function generateTasks(projectId: string, objective: string, dueDate?: string): Promise<Task[]> {
   const response = await fetch(
@@ -258,6 +270,17 @@ export async function updateTask(
   return response.json()
 }
 
+export async function getTask(projectId: string, taskId: string): Promise<Task> {
+  const response = await fetch(`${API_URL}/projects/${projectId}/tasks/${taskId}`, {
+    headers: getAuthHeaders(),
+  })
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.detail || 'Failed to fetch task')
+  }
+  return response.json()
+}
+
 export async function deleteTask(projectId: string, taskId: string): Promise<void> {
   const response = await fetch(`${API_URL}/projects/${projectId}/tasks/${taskId}`, {
     method: 'DELETE',
@@ -290,6 +313,53 @@ export async function createComment(projectId: string, taskId: string, content: 
   if (!response.ok) {
     const errorData = await response.json()
     throw new Error(errorData.detail || 'Failed to add comment')
+  }
+  return response.json()
+}
+
+// Subtask API calls
+export async function generateSubtasks(projectId: string, taskId: string, objective: string): Promise<Subtask[]> {
+  const response = await fetch(
+    `${API_URL}/projects/${projectId}/tasks/${taskId}/subtasks/generate?objective=${encodeURIComponent(objective)}`,
+    {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    },
+  )
+
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.detail || 'Failed to generate subtasks')
+  }
+
+  return response.json()
+}
+
+export async function getSubtasks(projectId: string, taskId: string): Promise<Subtask[]> {
+  const response = await fetch(`${API_URL}/projects/${projectId}/tasks/${taskId}/subtasks`, {
+    headers: getAuthHeaders(),
+  })
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.detail || 'Failed to fetch subtasks')
+  }
+  return response.json()
+}
+
+export async function updateSubtask(
+  projectId: string,
+  taskId: string,
+  subtaskId: string,
+  subtask: Partial<Subtask>,
+): Promise<Subtask> {
+  const response = await fetch(`${API_URL}/projects/${projectId}/tasks/${taskId}/subtasks/${subtaskId}`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(subtask),
+  })
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.detail || 'Failed to update subtask')
   }
   return response.json()
 }
