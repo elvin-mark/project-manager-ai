@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-3xl mx-auto">
+  <div class="max-w-5xl mx-auto">
     <h2 class="text-2xl font-semibold text-slate-800 mb-4">Tasks for Project: {{ projectName }}</h2>
     <TaskInput @generate="handleGenerateTasks" :loading="loading" />
 
@@ -12,20 +12,32 @@
       <p>{{ error }}</p>
     </div>
 
-    <TaskList 
-      :tasks="tasks" 
-      class="mt-6" 
-      @update-task="handleUpdateTask" 
-      @delete-task="handleDeleteTask" 
-      @assign-task="handleAssignTask"
-    />
+    <template v-if="isMobileView">
+      <TaskList 
+        :tasks="tasks" 
+        class="mt-6" 
+        @update-task="handleUpdateTask" 
+        @delete-task="handleDeleteTask" 
+        @assign-task="handleAssignTask"
+      />
+    </template>
+    <template v-else>
+      <KanbanBoard 
+        :tasks="tasks" 
+        class="mt-6" 
+        @update-task="handleUpdateTask" 
+        @delete-task="handleDeleteTask" 
+        @assign-task="handleAssignTask"
+      />
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, onBeforeUnmount } from 'vue';
 import { useRoute } from 'vue-router';
 import TaskInput from '../components/TaskInput.vue';
+import KanbanBoard from '../components/KanbanBoard.vue';
 import TaskList from '../components/TaskList.vue';
 import { generateTasks, getTasks, getProjectById, updateTask, deleteTask, assignTask } from '../services/api';
 import type { Task } from '../models/Task';
@@ -36,10 +48,15 @@ const tasks = ref<Task[]>([]);
 const loading = ref(false);
 const error = ref<string | null>(null);
 const projectName = ref('Loading...');
+const isMobileView = ref(false);
 
 const route = useRoute();
 const currentOrgId = ref(props.orgId);
 const currentProjectId = ref(props.projectId);
+
+const checkMobile = () => {
+  isMobileView.value = window.innerWidth < 768; // Tailwind's 'md' breakpoint
+};
 
 const fetchProjectAndTasks = async () => {
   loading.value = true;
@@ -105,7 +122,15 @@ const handleAssignTask = async (taskId: string) => {
   }
 };
 
-onMounted(fetchProjectAndTasks);
+onMounted(() => {
+  fetchProjectAndTasks();
+  checkMobile();
+  window.addEventListener('resize', checkMobile);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', checkMobile);
+});
 
 watch(() => props.projectId, (newProjectId) => {
   currentProjectId.value = newProjectId;
