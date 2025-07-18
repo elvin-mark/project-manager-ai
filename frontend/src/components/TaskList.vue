@@ -1,5 +1,11 @@
 <template>
-  <div>
+  <div class="flex flex-col space-y-4">
+    <button
+      @click="addNewTask"
+      class="self-start px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+    >
+      Add New Task
+    </button>
     <div v-if="tasks.length > 0" class="space-y-4">
       <TaskItem 
         v-for="task in tasks" 
@@ -23,5 +29,9 @@ import type { Task } from '../models/Task';
 import TaskItem from './TaskItem.vue';
 
 defineProps<{ tasks: Task[] }>();
-const emit = defineEmits(['update-task', 'delete-task', 'assign-task', 'view-task']);
+const emit = defineEmits(['update-task', 'delete-task', 'assign-task', 'view-task', 'add-task']);
+
+const addNewTask = () => {
+  emit('add-task');
+};
 </script>

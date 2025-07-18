@@ -116,6 +116,36 @@ def get_all_tasks(
     return [TaskResponse.model_validate(task) for task in tasks]
 
 
+@router.post("/projects/{project_id}/tasks", response_model=TaskResponse)
+async def create_task(
+    project_id: str,
+    task_create: TaskCreate,
+    db: Session = Depends(get_db),
+    current_user: DBUser = Depends(get_current_user),
+):
+    project = db.query(DBProject).filter(DBProject.id == project_id).first()
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    if current_user not in project.organization.members:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to create tasks for this project"
+        )
+
+    db_task = DBTask(
+        id=str(uuid.uuid4()),
+        project_id=project_id,
+        title=task_create.title,
+        description=task_create.description,
+        due_date=task_create.due_date,
+        status="todo",  # Default status for manually created tasks
+    )
+    db.add(db_task)
+    db.commit()
+    db.refresh(db_task)
+    return TaskResponse.model_validate(db_task)
+
+
 @router.get("/projects/{project_id}/tasks/{task_id}", response_model=TaskResponse)
 def get_task(
     project_id: str,

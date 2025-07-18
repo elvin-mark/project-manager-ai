@@ -29,6 +29,7 @@
         @delete-task="handleDeleteTask" 
         @assign-task="handleAssignTask"
         @view-task="handleViewTask"
+        @add-task="handleAddTask"
       />
     </template>
     <template v-else>
@@ -39,12 +40,63 @@
         @delete-task="handleDeleteTask" 
         @assign-task="handleAssignTask"
         @view-task="handleViewTask"
+        @add-task="handleAddTask"
       />
     </template>
 
     <ProjectDashboard :project-id="currentProjectId" />
 
-    
+    <!-- Add Task Modal -->
+    <div v-if="showAddTaskModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex justify-center items-center">
+      <div class="bg-white p-8 rounded-lg shadow-xl max-w-md w-full">
+        <h3 class="text-xl font-semibold mb-4">Add New Task</h3>
+        <form @submit.prevent="submitNewTask">
+          <div class="mb-4">
+            <label for="taskTitle" class="block text-sm font-medium text-gray-700">Title</label>
+            <input
+              type="text"
+              id="taskTitle"
+              v-model="newTask.title"
+              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+              required
+            />
+          </div>
+          <div class="mb-4">
+            <label for="taskDescription" class="block text-sm font-medium text-gray-700">Description</label>
+            <textarea
+              id="taskDescription"
+              v-model="newTask.description"
+              rows="3"
+              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+            ></textarea>
+          </div>
+          <div class="mb-4">
+            <label for="taskDueDate" class="block text-sm font-medium text-gray-700">Due Date</label>
+            <input
+              type="date"
+              id="taskDueDate"
+              v-model="newTask.due_date"
+              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+            />
+          </div>
+          <div class="flex justify-end space-x-3">
+            <button
+              type="button"
+              @click="showAddTaskModal = false"
+              class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+            >
+              Create Task
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -54,7 +106,7 @@ import { useRoute, useRouter } from 'vue-router';
 import TaskInput from '../components/TaskInput.vue';
 import KanbanBoard from '../components/KanbanBoard.vue';
 import TaskList from '../components/TaskList.vue';
-import { generateTasks, getTasks, getProjectById, updateTask, deleteTask, assignTask, getComments, createComment, generateSubtasks, getSubtasks, updateSubtask } from '../services/api';
+import { generateTasks, getTasks, getProjectById, updateTask, deleteTask, assignTask, getComments, createComment, generateSubtasks, getSubtasks, updateSubtask, createTask } from '../services/api';
 import type { Task } from '../models/Task';
 import type { Comment } from '../models/Comment';
 import type { Subtask } from '../models/Subtask';
@@ -73,6 +125,12 @@ const comments = ref<Comment[]>([]);
 const newCommentContent = ref('');
 const searchQuery = ref('');
 const subtaskObjective = ref('');
+const showAddTaskModal = ref(false);
+const newTask = ref<Partial<Task>>({
+  title: '',
+  description: '',
+  due_date: undefined,
+});
 
 const route = useRoute();
 const router = useRouter();
@@ -149,6 +207,26 @@ const handleAssignTask = async (taskId: string) => {
 
 const handleViewTask = async (task: Task) => {
   router.push({ name: 'task-details', params: { orgId: currentOrgId.value, projectId: currentProjectId.value, taskId: task.id } });
+};
+
+const handleAddTask = () => {
+  showAddTaskModal.value = true;
+};
+
+const submitNewTask = async () => {
+  try {
+    const createdTask = await createTask(
+      currentProjectId.value,
+      newTask.value.title || '',
+      newTask.value.description || '',
+      newTask.value.due_date ? new Date(newTask.value.due_date).toISOString() : undefined
+    );
+    tasks.value.push(createdTask);
+    showAddTaskModal.value = false;
+    newTask.value = { title: '', description: '', due_date: undefined };
+  } catch (err: any) {
+    alert(`Failed to create task: ${err.message}`);
+  }
 };
 
 const handleAddComment = async () => {

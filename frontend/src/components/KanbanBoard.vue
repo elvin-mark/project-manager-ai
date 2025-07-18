@@ -1,5 +1,12 @@
 <template>
-  <div class="flex space-x-4 overflow-x-auto">
+  <div class="flex flex-col space-y-4">
+    <button
+      @click="addNewTask"
+      class="self-start px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+    >
+      Add New Task
+    </button>
+    <div class="flex space-x-4 overflow-x-auto">
     <div
       v-for="column in columns"
       :key="column.status"
@@ -27,6 +34,7 @@
         <p v-if="filteredTasks(column.status).length === 0" class="text-gray-500 text-sm">No tasks in this column.</p>
       </div>
     </div>
+    </div>
   </div>
 </template>
 
@@ -36,7 +44,11 @@ import type { Task } from '../models/Task';
 import TaskItem from './TaskItem.vue';
 
 const props = defineProps<{ tasks: Task[] }>();
-const emit = defineEmits(['update-task', 'delete-task', 'assign-task', 'view-task']);
+const emit = defineEmits(['update-task', 'delete-task', 'assign-task', 'view-task', 'add-task']);
+
+const addNewTask = () => {
+  emit('add-task');
+};
 
 const columns = ref([
   { status: 'todo', title: 'To Do' },

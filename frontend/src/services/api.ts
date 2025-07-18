@@ -266,6 +266,25 @@ export async function getTasks(projectId: string, searchQuery?: string): Promise
   return response.json()
 }
 
+export async function createTask(
+  projectId: string,
+  title: string,
+  description: string,
+  due_date?: string,
+): Promise<Task> {
+  const response = await fetch(`${API_URL}/projects/${projectId}/tasks`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ title, description, due_date }),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.detail || 'Failed to create task')
+  }
+  return response.json()
+}
+
 export async function assignTask(projectId: string, taskId: string): Promise<Task> {
   const response = await fetch(`${API_URL}/projects/${projectId}/tasks/${taskId}/assign`, {
     method: 'POST',
