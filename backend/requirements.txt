@@ -1,12 +1,14 @@
 fastapi
+python-multipart
 uvicorn
 pydantic
+pydantic_settings
 python-dotenv
-chromadb
-langchain
+# chromadb
+# langchain
 ollama
 google-generativeai
+openai
 sqlalchemy
-aiosqlite
 passlib[bcrypt]
 python-jose[cryptography]

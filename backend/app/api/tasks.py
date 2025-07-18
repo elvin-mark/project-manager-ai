@@ -2,33 +2,25 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
-import ollama
 import json
 
 from app.models.task import Task as DBTask, TaskCreate, TaskResponse
 from app.models.project import Project as DBProject
-from app.services.rag_service import RAGService
-from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import get_current_user
 from app.models.user import (
     User as DBUser,
-)  # Alias to avoid conflict with Pydantic User model
+)
+from app.services.llm_service import LlmException, AiService, get_llm_service
 
 router = APIRouter()
-
-
-def get_rag_service():
-    return RAGService(
-        ollama_api_url=settings.OLLAMA_API_URL, gemini_api_key=settings.GEMINI_API_KEY
-    )
 
 
 @router.post("/projects/{project_id}/tasks/generate", response_model=List[TaskResponse])
 async def generate_tasks(
     project_id: str,
     objective: str,
-    rag_service: RAGService = Depends(get_rag_service),
+    llm_service: AiService = Depends(get_llm_service),
     db: Session = Depends(get_db),
     current_user: DBUser = Depends(get_current_user),
 ):
@@ -41,8 +33,8 @@ async def generate_tasks(
             status_code=403, detail="Not authorized to generate tasks for this project"
         )
 
-    # 1. Query the RAG service to get relevant context
-    context = rag_service.query(objective)
+    # 1. Query the RAG service to get relevant context (TODO)
+    context = ""
 
     # 2. Construct a prompt with the context and objective
     prompt = f"""
@@ -55,26 +47,10 @@ async def generate_tasks(
     Return the tasks as a JSON array of objects with the following keys: id, title, description.
     """
 
-    # 3. Send the prompt to the LLM (Ollama)
+    # 3. Send the prompt to the LLM and get the tasks
     try:
-        response = ollama.chat(
-            model="gemma3:1b",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a project manager. Your task is to break down an objective into a list of tasks. Return the tasks as a JSON array of objects with the following keys: id, title, description.",
-                },
-                {
-                    "role": "user",
-                    "content": prompt,
-                },
-            ],
-            format="json",
-        )
-
-        # 4. Parse the LLM response and create DB tasks
-        tasks_json = json.loads(response["message"]["content"])
-        tasks_data = [tasks_json] if "tasks" not in tasks_json else tasks_json["tasks"]
+        task_data = llm_service.get_tasks(prompt)
+        tasks_data = task_data
 
         created_tasks = []
         for task_data in tasks_data:
@@ -92,8 +68,8 @@ async def generate_tasks(
 
         return [TaskResponse.model_validate(task) for task in created_tasks]
 
-    except ollama.ResponseError as e:
-        raise HTTPException(status_code=500, detail=f"Ollama API error: {e.error}")
+    except LlmException as e:
+        raise HTTPException(status_code=500, detail=f"LLM API error: {e.message}")
     except json.JSONDecodeError:
         raise HTTPException(
             status_code=500, detail="Failed to parse LLM response as JSON."

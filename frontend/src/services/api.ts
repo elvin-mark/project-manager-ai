@@ -2,7 +2,7 @@ import type { Task } from '../models/Task'
 import type { Project } from '../models/Project'
 import type { Organization } from '../models/Organization'
 
-const API_URL = 'http://localhost:8000/api'
+const API_URL = import.meta.env.VITE_API_URL
 
 function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem('access_token')
@@ -55,18 +55,20 @@ export async function register(username: string, password: string): Promise<any>
 }
 
 // User API calls
-export async function getAllUsers(): Promise<{
-  id: string;
-  username: string;
-}[]> {
+export async function getAllUsers(): Promise<
+  {
+    id: string
+    username: string
+  }[]
+> {
   const response = await fetch(`${API_URL}/users`, {
     headers: getAuthHeaders(),
-  });
+  })
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.detail || 'Failed to fetch users');
+    const errorData = await response.json()
+    throw new Error(errorData.detail || 'Failed to fetch users')
   }
-  return response.json();
+  return response.json()
 }
 
 // Organization API calls
@@ -118,7 +120,10 @@ export async function addUserToOrganization(orgId: string, userId: string): Prom
   return response.json()
 }
 
-export async function removeUserFromOrganization(orgId: string, userId: string): Promise<Organization> {
+export async function removeUserFromOrganization(
+  orgId: string,
+  userId: string,
+): Promise<Organization> {
   const response = await fetch(`${API_URL}/organizations/${orgId}/remove_user/${userId}`, {
     method: 'DELETE',
     headers: getAuthHeaders(),
@@ -142,7 +147,11 @@ export async function deleteOrganization(orgId: string): Promise<void> {
 }
 
 // Project API calls
-export async function createProject(orgId: string, name: string, description: string): Promise<Project> {
+export async function createProject(
+  orgId: string,
+  name: string,
+  description: string,
+): Promise<Project> {
   const response = await fetch(`${API_URL}/projects`, {
     method: 'POST',
     headers: getAuthHeaders(),
@@ -222,12 +231,12 @@ export async function assignTask(projectId: string, taskId: string): Promise<Tas
   const response = await fetch(`${API_URL}/projects/${projectId}/tasks/${taskId}/assign`, {
     method: 'POST',
     headers: getAuthHeaders(),
-  });
+  })
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.detail || 'Failed to assign task');
+    const errorData = await response.json()
+    throw new Error(errorData.detail || 'Failed to assign task')
   }
-  return response.json();
+  return response.json()
 }
 
 export async function updateTask(
