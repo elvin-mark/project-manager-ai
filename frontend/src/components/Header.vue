@@ -1,7 +1,7 @@
 <template>
   <header class="bg-white shadow-md">
     <div class="container mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold text-slate-800">Adept AI Project Manager</h1>
+      <h1 class="text-2xl font-bold text-slate-800">Project Manager AI</h1>
       <button
         v-if="isLoggedIn"
         @click="handleLogout"
