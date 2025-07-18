@@ -1,5 +1,6 @@
 export interface Organization {
-  id: string;
-  name: string;
-  description?: string;
+  id: string
+  name: string
+  description?: string
+  members?: any[]
 }

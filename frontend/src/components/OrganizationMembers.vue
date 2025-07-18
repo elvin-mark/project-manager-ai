@@ -71,7 +71,7 @@ const addingMember = ref(false);
 const organizationName = computed(() => organization.value?.name || 'Loading...');
 const currentMembers = computed(() => organization.value?.members || []);
 const availableUsers = computed(() => {
-  const memberIds = new Set(currentMembers.value.map(m => m.id));
+  const memberIds = new Set(currentMembers.value.map((m:any) => m.id));
   return allUsers.value.filter(user => !memberIds.has(user.id));
 });
 

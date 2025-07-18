@@ -14,7 +14,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watchEffect } from 'vue';
+import { onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
@@ -30,13 +30,20 @@ const handleLogout = () => {
   router.push('/login');
 };
 
-// Watch for changes in route and local storage to update login status
-watchEffect(() => {
+// Initial check
+onMounted(() => {
   checkLoginStatus();
-  // Also listen to storage events for changes from other tabs/windows
+
+  // Listen to route changes
+  router.afterEach(() => {
+    checkLoginStatus();
+  });
+
+  // Listen to storage events (for changes from other tabs)
   window.addEventListener('storage', checkLoginStatus);
-  return () => {
-    window.removeEventListener('storage', checkLoginStatus);
-  };
+});
+
+onUnmounted(() => {
+  window.removeEventListener('storage', checkLoginStatus);
 });
 </script>
