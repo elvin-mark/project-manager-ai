@@ -8,7 +8,9 @@ from app.models.organization import Organization as DBOrganization
 from app.models.task import Task as DBTask
 from app.core.db import get_db
 from app.core.security import get_current_user
+from app.services.llm_service import AiService, get_llm_service, LlmException
 from pydantic import BaseModel
+
 
 router = APIRouter()
 
@@ -125,3 +127,86 @@ def delete_project(
     db.delete(db_project)
     db.commit()
     return
+
+
+@router.get("/projects/{project_id}/ai_summary", response_model=str)
+def get_project_ai_summary(
+    project_id: str,
+    db: Session = Depends(get_db),
+    current_user: DBUser = Depends(get_current_user),
+    llm_service: AiService = Depends(get_llm_service),
+):
+    project = db.query(DBProject).filter(DBProject.id == project_id).first()
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    if current_user not in project.organization.members:
+        raise HTTPException(status_code=403, detail="Not authorized to view this project summary")
+
+    tasks = db.query(DBTask).filter(DBTask.project_id == project_id).all()
+    
+    project_data = {
+        "project": {
+            "name": project.name,
+            "description": project.description,
+        },
+        "tasks": [
+            {
+                "title": task.title,
+                "description": task.description,
+                "status": task.status,
+                "comments": [comment.content for comment in task.comments],
+            }
+            for task in tasks
+        ],
+    }
+
+    try:
+        summary = llm_service.get_summary(project_data)
+        return summary
+    except LlmException as e:
+        raise HTTPException(status_code=500, detail=e.message)
+
+
+class AskQuestionRequest(BaseModel):
+    question: str
+
+
+@router.post("/projects/{project_id}/ask", response_model=str)
+def ask_project_question(
+    project_id: str,
+    request: AskQuestionRequest,
+    db: Session = Depends(get_db),
+    current_user: DBUser = Depends(get_current_user),
+    llm_service: AiService = Depends(get_llm_service),
+):
+    project = db.query(DBProject).filter(DBProject.id == project_id).first()
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    if current_user not in project.organization.members:
+        raise HTTPException(status_code=403, detail="Not authorized to ask questions about this project")
+
+    tasks = db.query(DBTask).filter(DBTask.project_id == project_id).all()
+    
+    project_data = {
+        "project": {
+            "name": project.name,
+            "description": project.description,
+        },
+        "tasks": [
+            {
+                "title": task.title,
+                "description": task.description,
+                "status": task.status,
+                "comments": [comment.content for comment in task.comments],
+            }
+            for task in tasks
+        ],
+    }
+
+    try:
+        answer = llm_service.ask_question(project_data, request.question)
+        return answer
+    except LlmException as e:
+        raise HTTPException(status_code=500, detail=e.message)

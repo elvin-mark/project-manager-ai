@@ -22,6 +22,12 @@ class AiService:
     def get_tasks(self, prompt: str) -> list[dict]:
         return []
 
+    def get_summary(self, project_data: dict) -> str:
+        return "This is a dummy summary."
+
+    def ask_question(self, project_data: dict, question: str) -> str:
+        return "This is a dummy answer."
+
 
 class OllamaService(AiService):
     def __init__(self, host="http://127.0.0.1:11434", model="gemma3:1b"):
@@ -52,6 +58,46 @@ class OllamaService(AiService):
         tasks_json = json.loads(response["message"]["content"])
         tasks = [tasks_json] if "tasks" not in tasks_json else tasks_json["tasks"]
         return tasks
+
+    def get_summary(self, project_data: dict) -> str:
+        try:
+            response = self.client.chat(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a project manager. Your task is to provide a summary of the project status. Return the summary as a single string in Markdown format.",
+                    },
+                    {
+                        "role": "user",
+                        "content": json.dumps(project_data),
+                    },
+                ],
+            )
+        except Exception as e:
+            raise LlmException("Ollama API error: " + e)
+
+        return response["message"]["content"]
+
+    def ask_question(self, project_data: dict, question: str) -> str:
+        try:
+            response = self.client.chat(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a project manager. Your task is to answer questions about the project based on the provided data. Answer in Markdown format.",
+                    },
+                    {
+                        "role": "user",
+                        "content": f"Context:\n{json.dumps(project_data)}\n\nQuestion: {question}",
+                    },
+                ],
+            )
+        except Exception as e:
+            raise LlmException("Ollama API error: " + e)
+
+        return response["message"]["content"]
 
 
 class OpenAIService(AiService):
@@ -106,6 +152,46 @@ class OpenAIService(AiService):
         except (KeyError, json.JSONDecodeError) as e:
             raise LlmException("Failed to parse OpenAI response: " + str(e))
 
+    def get_summary(self, project_data: dict) -> str:
+        try:
+            response = openai.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a project manager. Your task is to provide a summary of the project status. Return the summary as a single string in Markdown format.",
+                    },
+                    {
+                        "role": "user",
+                        "content": json.dumps(project_data),
+                    },
+                ],
+            )
+        except Exception as e:
+            raise LlmException("OpenAI API error: " + str(e))
+
+        return response.choices[0].message.content
+
+    def ask_question(self, project_data: dict, question: str) -> str:
+        try:
+            response = openai.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a project manager. Your task is to answer questions about the project based on the provided data. Answer in Markdown format.",
+                    },
+                    {
+                        "role": "user",
+                        "content": f"Context:\n{json.dumps(project_data)}\n\nQuestion: {question}",
+                    },
+                ],
+            )
+        except Exception as e:
+            raise LlmException("OpenAI API error: " + str(e))
+
+        return response.choices[0].message.content
+
 
 class GeminiService:
     def __init__(self, api_key: str, model: str = "gemini-2.0-flash"):
@@ -138,6 +224,22 @@ class GeminiService:
                     raise LlmException("Failed to parse JSON: " + str(e))
             else:
                 raise LlmException("No valid JSON block found in Gemini response.")
+        except Exception as e:
+            raise LlmException("Gemini API error: " + str(e))
+
+    def get_summary(self, project_data: dict) -> str:
+        try:
+            full_prompt = f"You are a project manager. Your task is to provide a summary of the project status. Return the summary as a single string in Markdown format.\n\n{json.dumps(project_data)}"
+            response = self.model.generate_content(full_prompt)
+            return response.text.strip()
+        except Exception as e:
+            raise LlmException("Gemini API error: " + str(e))
+
+    def ask_question(self, project_data: dict, question: str) -> str:
+        try:
+            full_prompt = f"You are a project manager. Your task is to answer questions about the project based on the provided data. Answer in Markdown format.\n\nContext:\n{json.dumps(project_data)}\n\nQuestion: {question}"
+            response = self.model.generate_content(full_prompt)
+            return response.text.strip()
         except Exception as e:
             raise LlmException("Gemini API error: " + str(e))
 

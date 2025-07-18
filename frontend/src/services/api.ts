@@ -211,6 +211,31 @@ export async function getProjectSummary(projectId: string): Promise<ProjectSumma
   return response.json()
 }
 
+export async function getProjectAiSummary(projectId: string): Promise<string> {
+  const response = await fetch(`${API_URL}/projects/${projectId}/ai_summary`, {
+    headers: getAuthHeaders(),
+  })
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.detail || 'Failed to fetch AI project summary')
+  }
+  return response.text()
+}
+
+export async function askProjectQuestion(projectId: string, question: string): Promise<string> {
+  const response = await fetch(`${API_URL}/projects/${projectId}/ask`,
+    {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ question }),
+    });
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.detail || 'Failed to ask project question')
+  }
+  return response.text()
+}
+
 // Task API calls
 export async function generateTasks(projectId: string, objective: string, dueDate?: string): Promise<Task[]> {
   const response = await fetch(
