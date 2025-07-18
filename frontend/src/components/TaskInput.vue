@@ -9,6 +9,11 @@
           placeholder="e.g., Implement user authentication with JWT"
           class="flex-grow p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
         />
+        <input
+          v-model="dueDate"
+          type="date"
+          class="p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
+        />
         <button
           type="submit"
           :disabled="loading"
@@ -28,11 +33,12 @@ import { ref } from 'vue';
 defineProps<{ loading: boolean }>();
 
 const objective = ref('');
+const dueDate = ref<string | undefined>(undefined);
 const emit = defineEmits(['generate']);
 
 const handleSubmit = () => {
   if (objective.value.trim()) {
-    emit('generate', objective.value);
+    emit('generate', objective.value, dueDate.value);
   }
 };
 </script>

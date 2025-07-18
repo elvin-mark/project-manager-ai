@@ -1,3 +1,4 @@
+from datetime import datetime
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -20,6 +21,7 @@ router = APIRouter()
 async def generate_tasks(
     project_id: str,
     objective: str,
+    due_date: datetime | None = None,
     llm_service: AiService = Depends(get_llm_service),
     db: Session = Depends(get_db),
     current_user: DBUser = Depends(get_current_user),
@@ -55,7 +57,10 @@ async def generate_tasks(
         created_tasks = []
         for task_data in tasks_data:
             db_task = DBTask(
-                **task_data, project_id=project_id, assigned_user_id=current_user.id
+                **task_data,
+                project_id=project_id,
+                assigned_user_id=current_user.id,
+                due_date=due_date,
             )
             db_task.id = str(uuid.uuid4())
             db.add(db_task)
@@ -85,6 +90,7 @@ def get_all_tasks(
     project_id: str,
     db: Session = Depends(get_db),
     current_user: DBUser = Depends(get_current_user),
+    search_query: str | None = None,
 ):
     project = db.query(DBProject).filter(DBProject.id == project_id).first()
     if project is None:
@@ -95,7 +101,15 @@ def get_all_tasks(
             status_code=403, detail="Not authorized to view tasks for this project"
         )
 
-    tasks = db.query(DBTask).filter(DBTask.project_id == project_id).all()
+    query = db.query(DBTask).filter(DBTask.project_id == project_id)
+
+    if search_query:
+        query = query.filter(
+            (DBTask.title.ilike(f"%{search_query}%"))
+            | (DBTask.description.ilike(f"%{search_query}%"))
+        )
+
+    tasks = query.all()
     for task in tasks:
         if task.assigned_to:
             task.assigned_username = task.assigned_to.username
@@ -220,8 +234,13 @@ def update_task(
         db_task.assigned_user_id = None
 
     for key, value in task_update.model_dump(exclude_unset=True).items():
-        if key != "assigned_user_id":  # assigned_user_id is handled above
+        if key not in [
+            "assigned_user_id",
+            "due_date",
+        ]:  # assigned_user_id and due_date are handled above
             setattr(db_task, key, value)
+    if task_update.due_date is not None:
+        db_task.due_date = task_update.due_date
 
     db.add(db_task)
     db.commit()

@@ -6,6 +6,7 @@
           <h3 class="text-lg font-semibold text-slate-800 mb-1">{{ task.title }}</h3>
           <p v-if="task.assigned_username" class="text-sm text-slate-500">Assigned to: {{ task.assigned_username }}</p>
           <p v-else class="text-sm text-slate-500">Unassigned</p>
+          <p v-if="task.due_date" class="text-sm text-slate-500">Due: {{ formatDate(task.due_date) }}</p>
         </div>
         <span 
           class="text-xs font-semibold uppercase px-3 py-1 rounded-full"
@@ -16,9 +17,10 @@
       </div>
       <p class="text-slate-600">{{ task.description }}</p>
       <div class="mt-4 flex justify-end space-x-2">
-        <button @click="assignToMe" class="text-green-500 hover:text-green-700 text-sm">Assign to Me</button>
-        <button @click="startEditing" class="text-blue-500 hover:text-blue-700 text-sm">Edit</button>
-        <button @click="confirmDelete" class="text-red-500 hover:text-red-700 text-sm">Delete</button>
+        <button @click.stop="assignToMe" class="text-green-500 hover:text-green-700 text-sm">Assign to Me</button>
+        <button @click.stop="startEditing" class="text-blue-500 hover:text-blue-700 text-sm">Edit</button>
+        <button @click.stop="confirmDelete" class="text-red-500 hover:text-red-700 text-sm">Delete</button>
+        <button @click.stop="viewTask" class="text-purple-500 hover:text-purple-700 text-sm">Comments</button>
       </div>
     </div>
     <div v-else>
@@ -39,6 +41,15 @@
           rows="3"
           class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
         ></textarea>
+      </div>
+      <div class="mb-3">
+        <label for="edit-due-date" class="block text-sm font-medium text-slate-700">Due Date</label>
+        <input 
+          id="edit-due-date"
+          v-model="editedDueDate"
+          type="date"
+          class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+        />
       </div>
       <div class="mb-4">
         <label for="edit-status" class="block text-sm font-medium text-slate-700">Status</label>
@@ -65,18 +76,20 @@ import { ref, computed } from 'vue';
 import type { Task } from '../models/Task';
 
 const props = defineProps<{ task: Task }>();
-const emit = defineEmits(['update-task', 'delete-task', 'assign-task']);
+const emit = defineEmits(['update-task', 'delete-task', 'assign-task', 'view-task']);
 
 const isEditing = ref(false);
 const editedTitle = ref(props.task.title);
 const editedDescription = ref(props.task.description);
 const editedStatus = ref(props.task.status);
+const editedDueDate = ref(props.task.due_date ? props.task.due_date.split('T')[0] : '');
 
 const startEditing = () => {
   isEditing.value = true;
   editedTitle.value = props.task.title;
   editedDescription.value = props.task.description;
   editedStatus.value = props.task.status;
+  editedDueDate.value = props.task.due_date ? props.task.due_date.split('T')[0] : '';
 };
 
 const cancelEditing = () => {
@@ -90,6 +103,7 @@ const saveChanges = () => {
     description: editedDescription.value,
     status: editedStatus.value,
     assigned_user_id: props.task.assigned_user_id, // Keep existing assignment unless explicitly changed
+    due_date: editedDueDate.value || undefined,
   });
   isEditing.value = false;
 };
@@ -102,6 +116,15 @@ const confirmDelete = () => {
   if (confirm('Are you sure you want to delete this task?')) {
     emit('delete-task', props.task.id);
   }
+};
+
+const viewTask = () => {
+  emit('view-task', props.task);
+};
+
+const formatDate = (dateString: string) => {
+  const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric' };
+  return new Date(dateString).toLocaleDateString(undefined, options);
 };
 
 const statusClass = computed(() => {

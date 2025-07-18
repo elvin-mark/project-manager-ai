@@ -1,5 +1,6 @@
 import type { Task } from '../models/Task'
 import type { Project } from '../models/Project'
+import type { Comment } from '../models/Comment'
 import type { Organization } from '../models/Organization'
 
 const API_URL = import.meta.env.VITE_API_URL
@@ -199,9 +200,9 @@ export async function deleteProject(projectId: string): Promise<void> {
 }
 
 // Task API calls
-export async function generateTasks(projectId: string, objective: string): Promise<Task[]> {
+export async function generateTasks(projectId: string, objective: string, dueDate?: string): Promise<Task[]> {
   const response = await fetch(
-    `${API_URL}/projects/${projectId}/tasks/generate?objective=${encodeURIComponent(objective)}`,
+    `${API_URL}/projects/${projectId}/tasks/generate?objective=${encodeURIComponent(objective)}${dueDate ? `&due_date=${encodeURIComponent(dueDate)}` : ''}`,
     {
       method: 'POST',
       headers: getAuthHeaders(),
@@ -216,8 +217,9 @@ export async function generateTasks(projectId: string, objective: string): Promi
   return response.json()
 }
 
-export async function getTasks(projectId: string): Promise<Task[]> {
-  const response = await fetch(`${API_URL}/projects/${projectId}/tasks`, {
+export async function getTasks(projectId: string, searchQuery?: string): Promise<Task[]> {
+  const url = searchQuery ? `${API_URL}/projects/${projectId}/tasks?search_query=${encodeURIComponent(searchQuery)}` : `${API_URL}/projects/${projectId}/tasks`;
+  const response = await fetch(url, {
     headers: getAuthHeaders(),
   })
   if (!response.ok) {
@@ -265,4 +267,29 @@ export async function deleteTask(projectId: string, taskId: string): Promise<voi
     const errorData = await response.json()
     throw new Error(errorData.detail || 'Failed to delete task')
   }
+}
+
+// Comment API calls
+export async function getComments(projectId: string, taskId: string): Promise<Comment[]> {
+  const response = await fetch(`${API_URL}/projects/${projectId}/tasks/${taskId}/comments`, {
+    headers: getAuthHeaders(),
+  })
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.detail || 'Failed to fetch comments')
+  }
+  return response.json()
+}
+
+export async function createComment(projectId: string, taskId: string, content: string): Promise<Comment> {
+  const response = await fetch(`${API_URL}/projects/${projectId}/tasks/${taskId}/comments`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ content }),
+  })
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.detail || 'Failed to add comment')
+  }
+  return response.json()
 }

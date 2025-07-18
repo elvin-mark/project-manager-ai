@@ -21,6 +21,7 @@
           @update-task="(updatedTask) => $emit('update-task', updatedTask)"
           @delete-task="(taskId) => $emit('delete-task', taskId)"
           @assign-task="(taskId) => $emit('assign-task', taskId)"
+          @view-task="(task) => $emit('view-task', task)"
           class="mb-3 cursor-grab"
         />
         <p v-if="filteredTasks(column.status).length === 0" class="text-gray-500 text-sm">No tasks in this column.</p>
@@ -35,7 +36,7 @@ import type { Task } from '../models/Task';
 import TaskItem from './TaskItem.vue';
 
 const props = defineProps<{ tasks: Task[] }>();
-const emit = defineEmits(['update-task', 'delete-task', 'assign-task']);
+const emit = defineEmits(['update-task', 'delete-task', 'assign-task', 'view-task']);
 
 const columns = ref([
   { status: 'todo', title: 'To Do' },
