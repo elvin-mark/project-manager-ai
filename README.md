@@ -5,6 +5,8 @@
 ## Features Implemented
 
 -   **AI-powered Task Generation:** Utilizes Large Language Models (LLMs) like Ollama, OpenAI, or Gemini to break down high-level objectives into detailed, actionable tasks.
+-   **AI-powered Project Summary:** Get a quick, AI-generated summary of your project's status.
+-   **AI-powered Q&A:** Ask specific questions about your project and get AI-powered answers based on the project's data.
 -   **Persistent Storage:** Tasks and projects are now stored in a database (SQLite by default, configurable for others via SQLAlchemy) ensuring data persistence across application restarts.
 -   **User Authentication & Authorization:** Secure user registration, login, and JWT-based authentication to protect API endpoints.
 -   **Organizations:** Projects are grouped under organizations, enabling multi-user collaboration.
