@@ -4,6 +4,9 @@ services:
     build: ./backend
     ports:
       - 8000:8000
+    volumes:
+      - ./vols/.env:/backend/.env
+      - ./vols/sql_app.db:/backend/sql_app.db
 
   frontend:
     build: ./frontend
