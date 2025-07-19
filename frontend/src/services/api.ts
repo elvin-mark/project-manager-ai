@@ -223,12 +223,11 @@ export async function getProjectAiSummary(projectId: string): Promise<string> {
 }
 
 export async function askProjectQuestion(projectId: string, question: string): Promise<string> {
-  const response = await fetch(`${API_URL}/projects/${projectId}/ask`,
-    {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ question }),
-    });
+  const response = await fetch(`${API_URL}/projects/${projectId}/ask`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ question }),
+  })
   if (!response.ok) {
     const errorData = await response.json()
     throw new Error(errorData.detail || 'Failed to ask project question')
@@ -237,7 +236,11 @@ export async function askProjectQuestion(projectId: string, question: string): P
 }
 
 // Task API calls
-export async function generateTasks(projectId: string, objective: string, dueDate?: string): Promise<Task[]> {
+export async function generateTasks(
+  projectId: string,
+  objective: string,
+  dueDate?: string,
+): Promise<Task[]> {
   const response = await fetch(
     `${API_URL}/projects/${projectId}/tasks/generate?objective=${encodeURIComponent(objective)}${dueDate ? `&due_date=${encodeURIComponent(dueDate)}` : ''}`,
     {
@@ -255,7 +258,9 @@ export async function generateTasks(projectId: string, objective: string, dueDat
 }
 
 export async function getTasks(projectId: string, searchQuery?: string): Promise<Task[]> {
-  const url = searchQuery ? `${API_URL}/projects/${projectId}/tasks?search_query=${encodeURIComponent(searchQuery)}` : `${API_URL}/projects/${projectId}/tasks`;
+  const url = searchQuery
+    ? `${API_URL}/projects/${projectId}/tasks?search_query=${encodeURIComponent(searchQuery)}`
+    : `${API_URL}/projects/${projectId}/tasks`
   const response = await fetch(url, {
     headers: getAuthHeaders(),
   })
@@ -348,7 +353,11 @@ export async function getComments(projectId: string, taskId: string): Promise<Co
   return response.json()
 }
 
-export async function createComment(projectId: string, taskId: string, content: string): Promise<Comment> {
+export async function createComment(
+  projectId: string,
+  taskId: string,
+  content: string,
+): Promise<Comment> {
   const response = await fetch(`${API_URL}/projects/${projectId}/tasks/${taskId}/comments`, {
     method: 'POST',
     headers: getAuthHeaders(),
@@ -362,7 +371,11 @@ export async function createComment(projectId: string, taskId: string, content: 
 }
 
 // Subtask API calls
-export async function generateSubtasks(projectId: string, taskId: string, objective: string): Promise<Subtask[]> {
+export async function generateSubtasks(
+  projectId: string,
+  taskId: string,
+  objective: string,
+): Promise<Subtask[]> {
   const response = await fetch(
     `${API_URL}/projects/${projectId}/tasks/${taskId}/subtasks/generate?objective=${encodeURIComponent(objective)}`,
     {
@@ -396,14 +409,55 @@ export async function updateSubtask(
   subtaskId: string,
   subtask: Partial<Subtask>,
 ): Promise<Subtask> {
-  const response = await fetch(`${API_URL}/projects/${projectId}/tasks/${taskId}/subtasks/${subtaskId}`, {
-    method: 'PUT',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(subtask),
-  })
+  const response = await fetch(
+    `${API_URL}/projects/${projectId}/tasks/${taskId}/subtasks/${subtaskId}`,
+    {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(subtask),
+    },
+  )
   if (!response.ok) {
     const errorData = await response.json()
     throw new Error(errorData.detail || 'Failed to update subtask')
   }
   return response.json()
+}
+
+export async function askTaskQuestion(
+  projectId: string,
+  taskId: string,
+  question: string,
+): Promise<string> {
+  const response = await fetch(`${API_URL}/projects/${projectId}/tasks/${taskId}/ask`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ question }),
+  })
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.detail || 'Failed to ask project question')
+  }
+  return response.text()
+}
+
+export async function askSubtaskQuestion(
+  projectId: string,
+  taskId: string,
+  subtaskId: string,
+  question: string,
+): Promise<string> {
+  const response = await fetch(
+    `${API_URL}/projects/${projectId}/tasks/${taskId}/subtasks/${subtaskId}/ask`,
+    {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ question }),
+    },
+  )
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.detail || 'Failed to ask project question')
+  }
+  return response.text()
 }

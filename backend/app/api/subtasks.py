@@ -7,9 +7,11 @@ import json
 from app.models.subtask import Subtask as DBSubtask, SubtaskCreate, SubtaskResponse
 from app.models.task import Task as DBTask
 from app.models.user import User as DBUser
+from app.models.project import Project as DBProject
 from app.core.db import get_db
 from app.core.security import get_current_user
 from app.services.llm_service import LlmException, AiService, get_llm_service
+from app.models.requests.question import AskQuestionRequest
 
 router = APIRouter()
 
@@ -136,3 +138,72 @@ def update_subtask(
     db.commit()
     db.refresh(subtask)
     return SubtaskResponse.model_validate(subtask)
+
+
+@router.post("/projects/{project_id}/tasks/{task_id}/subtasks/{subtask_id}/ask")
+def ask_project_question(
+    project_id: str,
+    task_id: str,
+    subtask_id: str,
+    request: AskQuestionRequest,
+    db: Session = Depends(get_db),
+    current_user: DBUser = Depends(get_current_user),
+    llm_service: AiService = Depends(get_llm_service),
+):
+    db_subtask = (
+        db.query(DBSubtask)
+        .filter(DBSubtask.id == subtask_id, DBSubtask.task_id == task_id)
+        .first()
+    )
+    if db_subtask is None:
+        raise HTTPException(status_code=404, detail="Subtask not found")
+
+    project = db.query(DBProject).filter(DBProject.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    if current_user not in project.organization.members:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to access this project"
+        )
+
+    project_data = {
+        "id": project.id,
+        "name": project.name,
+        "description": project.description,
+        "tasks": [
+            {
+                "id": task.id,
+                "title": task.title,
+                "description": task.description,
+                "status": task.status,
+                "due_date": task.due_date.isoformat() if task.due_date else None,
+                "assigned_to": task.assigned_to.username if task.assigned_to else None,
+                "subtasks": [
+                    {
+                        "id": subtask.id,
+                        "title": subtask.title,
+                        "description": subtask.description,
+                        "status": subtask.status,
+                    }
+                    for subtask in task.subtasks
+                ],
+            }
+            for task in project.tasks
+        ],
+    }
+
+    question = f"""Giving the following subtask:
+    Title: {db_subtask.title}
+    Description: {db_subtask.description}
+    
+    which belongs to the task:
+    Title: {db_subtask.task.title}
+    Description: {db_subtask.task.description}
+    
+    The user is asking the following question:
+    {request.question}
+    """
+
+    answer = llm_service.ask_question(project_data, question)
+    return {"answer": answer}

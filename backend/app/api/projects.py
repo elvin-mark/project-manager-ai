@@ -11,6 +11,8 @@ from app.core.security import get_current_user
 from app.services.llm_service import AiService, get_llm_service, LlmException
 from pydantic import BaseModel
 
+from app.models.requests.question import AskQuestionRequest
+
 
 router = APIRouter()
 
@@ -23,9 +25,16 @@ def create_project(
     db: Session = Depends(get_db),
     current_user: DBUser = Depends(get_current_user),
 ):
-    organization = db.query(DBOrganization).filter(DBOrganization.id == project.organization_id).first()
+    organization = (
+        db.query(DBOrganization)
+        .filter(DBOrganization.id == project.organization_id)
+        .first()
+    )
     if not organization or current_user not in organization.members:
-        raise HTTPException(status_code=403, detail="Not authorized to create projects in this organization")
+        raise HTTPException(
+            status_code=403,
+            detail="Not authorized to create projects in this organization",
+        )
 
     db_project = DBProject(**project.model_dump())
     db.add(db_project)
@@ -42,13 +51,12 @@ def get_all_projects(
 ):
     organization = db.query(DBOrganization).filter(DBOrganization.id == org_id).first()
     if not organization or current_user not in organization.members:
-        raise HTTPException(status_code=403, detail="Not authorized to view projects in this organization")
+        raise HTTPException(
+            status_code=403,
+            detail="Not authorized to view projects in this organization",
+        )
 
-    projects = (
-        db.query(DBProject)
-        .filter(DBProject.organization_id == org_id)
-        .all()
-    )
+    projects = db.query(DBProject).filter(DBProject.organization_id == org_id).all()
     return projects
 
 
@@ -58,17 +66,15 @@ def get_project(
     db: Session = Depends(get_db),
     current_user: DBUser = Depends(get_current_user),
 ):
-    project = (
-        db.query(DBProject)
-        .filter(DBProject.id == project_id)
-        .first()
-    )
+    project = db.query(DBProject).filter(DBProject.id == project_id).first()
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
-    
+
     # Check if the current user is a member of the project's organization
     if current_user not in project.organization.members:
-        raise HTTPException(status_code=403, detail="Not authorized to view this project")
+        raise HTTPException(
+            status_code=403, detail="Not authorized to view this project"
+        )
 
     return project
 
@@ -91,12 +97,26 @@ def get_project_summary(
         raise HTTPException(status_code=404, detail="Project not found")
 
     if current_user not in project.organization.members:
-        raise HTTPException(status_code=403, detail="Not authorized to view this project summary")
+        raise HTTPException(
+            status_code=403, detail="Not authorized to view this project summary"
+        )
 
     total_tasks = db.query(DBTask).filter(DBTask.project_id == project_id).count()
-    todo_tasks = db.query(DBTask).filter(DBTask.project_id == project_id, DBTask.status == "todo").count()
-    in_progress_tasks = db.query(DBTask).filter(DBTask.project_id == project_id, DBTask.status == "in_progress").count()
-    done_tasks = db.query(DBTask).filter(DBTask.project_id == project_id, DBTask.status == "done").count()
+    todo_tasks = (
+        db.query(DBTask)
+        .filter(DBTask.project_id == project_id, DBTask.status == "todo")
+        .count()
+    )
+    in_progress_tasks = (
+        db.query(DBTask)
+        .filter(DBTask.project_id == project_id, DBTask.status == "in_progress")
+        .count()
+    )
+    done_tasks = (
+        db.query(DBTask)
+        .filter(DBTask.project_id == project_id, DBTask.status == "done")
+        .count()
+    )
 
     return ProjectSummaryResponse(
         total_tasks=total_tasks,
@@ -112,17 +132,15 @@ def delete_project(
     db: Session = Depends(get_db),
     current_user: DBUser = Depends(get_current_user),
 ):
-    db_project = (
-        db.query(DBProject)
-        .filter(DBProject.id == project_id)
-        .first()
-    )
+    db_project = db.query(DBProject).filter(DBProject.id == project_id).first()
     if db_project is None:
         raise HTTPException(status_code=404, detail="Project not found")
-    
+
     # Check if the current user is a member of the project's organization
     if current_user not in db_project.organization.members:
-        raise HTTPException(status_code=403, detail="Not authorized to delete this project")
+        raise HTTPException(
+            status_code=403, detail="Not authorized to delete this project"
+        )
 
     db.delete(db_project)
     db.commit()
@@ -141,10 +159,12 @@ def get_project_ai_summary(
         raise HTTPException(status_code=404, detail="Project not found")
 
     if current_user not in project.organization.members:
-        raise HTTPException(status_code=403, detail="Not authorized to view this project summary")
+        raise HTTPException(
+            status_code=403, detail="Not authorized to view this project summary"
+        )
 
     tasks = db.query(DBTask).filter(DBTask.project_id == project_id).all()
-    
+
     project_data = {
         "project": {
             "name": project.name,
@@ -168,10 +188,6 @@ def get_project_ai_summary(
         raise HTTPException(status_code=500, detail=e.message)
 
 
-class AskQuestionRequest(BaseModel):
-    question: str
-
-
 @router.post("/projects/{project_id}/ask", response_model=str)
 def ask_project_question(
     project_id: str,
@@ -185,10 +201,12 @@ def ask_project_question(
         raise HTTPException(status_code=404, detail="Project not found")
 
     if current_user not in project.organization.members:
-        raise HTTPException(status_code=403, detail="Not authorized to ask questions about this project")
+        raise HTTPException(
+            status_code=403, detail="Not authorized to ask questions about this project"
+        )
 
     tasks = db.query(DBTask).filter(DBTask.project_id == project_id).all()
-    
+
     project_data = {
         "project": {
             "name": project.name,

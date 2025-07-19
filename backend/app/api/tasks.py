@@ -13,6 +13,7 @@ from app.models.user import (
     User as DBUser,
 )
 from app.services.llm_service import LlmException, AiService, get_llm_service
+from app.models.requests.question import AskQuestionRequest
 
 router = APIRouter()
 
@@ -305,3 +306,67 @@ def delete_task(
     db.delete(db_task)
     db.commit()
     return
+
+
+@router.post("/projects/{project_id}/tasks/{task_id}/ask")
+def ask_project_question(
+    project_id: str,
+    task_id: str,
+    request: AskQuestionRequest,
+    db: Session = Depends(get_db),
+    current_user: DBUser = Depends(get_current_user),
+    llm_service: AiService = Depends(get_llm_service),
+):
+    db_task = (
+        db.query(DBTask)
+        .filter(DBTask.project_id == project_id, DBTask.id == task_id)
+        .first()
+    )
+    if db_task is None:
+        raise HTTPException(status_code=404, detail="Task not found in this project")
+
+    project = db.query(DBProject).filter(DBProject.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    if current_user not in project.organization.members:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to access this project"
+        )
+
+    project_data = {
+        "id": project.id,
+        "name": project.name,
+        "description": project.description,
+        "tasks": [
+            {
+                "id": task.id,
+                "title": task.title,
+                "description": task.description,
+                "status": task.status,
+                "due_date": task.due_date.isoformat() if task.due_date else None,
+                "assigned_to": task.assigned_to.username if task.assigned_to else None,
+                "subtasks": [
+                    {
+                        "id": subtask.id,
+                        "title": subtask.title,
+                        "description": subtask.description,
+                        "status": subtask.status,
+                    }
+                    for subtask in task.subtasks
+                ],
+            }
+            for task in project.tasks
+        ],
+    }
+
+    question = f"""Giving the following task:
+    Title: {db_task.title}
+    Description: {db_task.description}
+    
+    The user is asking the following question:
+    {request.question}
+    """
+
+    answer = llm_service.ask_question(project_data, question)
+    return {"answer": answer}
