@@ -363,6 +363,9 @@ def ask_project_question(
     question = f"""Giving the following task:
     Title: {db_task.title}
     Description: {db_task.description}
+
+    And the following comments under this task:
+    {"\n".join([comment.content for comment in db_task.comments]) if db_task.comments else "None"}
     
     The user is asking the following question:
     {request.question}

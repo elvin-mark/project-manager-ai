@@ -64,6 +64,8 @@
       <div class="flex justify-end space-x-2">
         <button @click="handleAddComment" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Add Comment</button>
       </div>
+
+      <AskAI :projectId="projectId" :taskId="taskId" :subtaskId="null" />
     </div>
   </div>
 </template>
@@ -75,6 +77,7 @@ import { getTask, getComments, createComment, generateSubtasks, getSubtasks, upd
 import type { Task } from '../models/Task';
 import type { Comment } from '../models/Comment';
 import type { Subtask } from '../models/Subtask';
+import AskAI from '@/components/AskAI.vue';
 
 const route = useRoute();
 const projectId = ref(route.params.projectId as string);

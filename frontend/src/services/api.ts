@@ -438,7 +438,7 @@ export async function askTaskQuestion(
     const errorData = await response.json()
     throw new Error(errorData.detail || 'Failed to ask project question')
   }
-  return response.text()
+  return response.json().then((data) => data.answer)
 }
 
 export async function askSubtaskQuestion(
@@ -459,5 +459,5 @@ export async function askSubtaskQuestion(
     const errorData = await response.json()
     throw new Error(errorData.detail || 'Failed to ask project question')
   }
-  return response.text()
+  return response.json().then((data) => data.answer)
 }
